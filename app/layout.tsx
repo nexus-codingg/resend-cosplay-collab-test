@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { Geist, Geist_Mono } from "next/font/google";
+import { themeInitScript } from "@/lib/theme";
+import { InlineScript } from "./components/inline-script";
+import { ThemeToggle } from "./components/theme-toggle";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -23,20 +26,26 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // The inline theme script sets data-theme before React hydrates
+      suppressHydrationWarning
     >
+      <head>
+        <InlineScript html={themeInitScript} />
+      </head>
       <body className="min-h-full flex flex-col">
         <header className="border-b border-border">
           <nav className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
             <Link href="/" className="text-lg font-semibold tracking-tight">
               <span className="text-accent">✦</span> Nexus Cosplays
             </Link>
-            <div className="flex gap-6 text-sm text-muted">
+            <div className="flex items-center gap-6 text-sm text-muted">
               <Link href="/" className="hover:text-foreground">
                 Cosplayers
               </Link>
               <Link href="/collabs" className="hover:text-foreground">
                 Collabs
               </Link>
+              <ThemeToggle />
             </div>
           </nav>
         </header>

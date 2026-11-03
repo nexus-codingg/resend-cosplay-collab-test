@@ -44,17 +44,58 @@
   --font-mono: var(--font-geist-mono);
 }
 
+/*
+  Theme: <html data-theme="light|dark"> is set from localStorage by the inline
+  script in app/layout.tsx. With no saved choice, the system setting applies.
+  The dark block appears twice: once for the explicit choice, once for the system default.
+*/
+:root {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --background: #0b1e20;
+  --foreground: #eef1f4;
+  --surface: #12292c;
+  --border: #23403f;
+  --muted: var(--slate);
+  /* Teal is too dark to read on a dark background, so clay leads in dark mode */
+  --accent: var(--clay);
+  --accent-foreground: #1d1720;
+  --accent-2: var(--tea);
+}
+
 @media (prefers-color-scheme: dark) {
-  :root {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
     --background: #0b1e20;
     --foreground: #eef1f4;
     --surface: #12292c;
     --border: #23403f;
     --muted: var(--slate);
-    /* Teal is too dark to read on a dark background, so clay leads in dark mode */
     --accent: var(--clay);
     --accent-foreground: #1d1720;
     --accent-2: var(--tea);
+  }
+}
+
+/* Toggle icon: show the moon in light mode (switch to dark), the sun in dark mode */
+.theme-icon-sun {
+  display: none;
+}
+:root[data-theme="dark"] .theme-icon-sun {
+  display: block;
+}
+:root[data-theme="dark"] .theme-icon-moon {
+  display: none;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-icon-sun {
+    display: block;
+  }
+  :root:not([data-theme="light"]) .theme-icon-moon {
+    display: none;
   }
 }
 

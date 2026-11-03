@@ -25,6 +25,7 @@ Rating: 🟢 smooth · 🟡 minor friction · 🔴 blocker
 - ℹ️ Receiving is **disabled** on `collab.nexuscosplays.com`. It needs enabling (MX record) before Phase 3, or use the `.resend.app` address.
 - 🟢 Enabled receiving: the dashboard gave one MX record (`collab` → `receive.forge.rmta.net`, priority 10), added in Cloudflare. It resolved on public DNS right away.
 - 🟡 The dashboard showed the MX as **Pending** after DNS had already propagated. It only turned verified after manually re-triggering verification (via the Resend MCP `verify-domain`).
+- 🔴 `dns.email/lookup` flags the MX as **Invalid** because it expects the legacy value `inbound-smtp.us-east-1.amazonaws.com`. The dashboard and API show `receive.forge.rmta.net` as verified, so the lookup tool isn't Forge-aware yet. Confusing, since both are Resend tools giving opposite answers.
 - 🟡 The domain uses Forge (`*.forge.rmta.net` for SPF and MX). The Forge feature page says inbound will route through Forge but doesn't explain how, or whether receiving setup differs.
 
 ### Phase 2: Send interest email with images

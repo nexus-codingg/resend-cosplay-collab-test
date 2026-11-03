@@ -1,7 +1,7 @@
 const styles = {
-  pending: "bg-amber-500/15 text-amber-600",
-  discussing: "bg-sky-500/15 text-sky-600",
-  confirmed: "bg-emerald-500/15 text-emerald-600",
+  pending: "bg-clay/25 text-foreground",
+  discussing: "bg-slate/35 text-foreground",
+  confirmed: "bg-tea text-teal",
 } as const;
 
 export function StatusBadge({ status }: { status: keyof typeof styles }) {

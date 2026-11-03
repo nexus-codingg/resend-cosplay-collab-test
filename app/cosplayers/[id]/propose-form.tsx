@@ -102,7 +102,7 @@ export function ProposeForm({
       <button
         type="submit"
         disabled={pending}
-        className="self-start rounded-full bg-gradient-to-r from-accent to-accent-2 px-6 py-2.5 text-sm font-medium text-white transition disabled:opacity-60"
+        className="self-start rounded-full bg-accent px-6 py-2.5 text-sm font-medium text-accent-foreground transition hover:opacity-90 disabled:opacity-60"
       >
         {pending ? "Sending…" : "Send collab request"}
       </button>

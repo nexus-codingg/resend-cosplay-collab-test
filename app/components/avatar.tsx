@@ -1,10 +1,11 @@
+// Palette pairs; each ends on a dark color so the white initials stay readable
 const gradients = [
-  "from-fuchsia-500 to-violet-600",
-  "from-sky-500 to-indigo-600",
-  "from-rose-500 to-orange-500",
-  "from-emerald-500 to-teal-600",
-  "from-amber-500 to-pink-600",
-  "from-violet-500 to-cyan-500",
+  "from-teal to-grape",
+  "from-clay to-grape",
+  "from-grape to-teal",
+  "from-clay to-teal",
+  "from-slate to-grape",
+  "from-teal to-clay",
 ];
 
 export function Avatar({ id, name, size = "md" }: { id: number; name: string; size?: "md" | "lg" }) {

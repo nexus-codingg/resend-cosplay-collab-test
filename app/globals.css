@@ -1,22 +1,44 @@
 @import "tailwindcss";
 
+/*
+  Palette
+  Dark Teal     #0f5257
+  Sunlit Clay   #e0a458
+  Pale Slate    #adb6c4
+  Vintage Grape #3f3244
+  Tea Green     #dbf9b8
+*/
+
 :root {
-  --background: #faf8ff;
-  --foreground: #1a1625;
+  --teal: #0f5257;
+  --clay: #e0a458;
+  --slate: #adb6c4;
+  --grape: #3f3244;
+  --tea: #dbf9b8;
+
+  --background: #f5f6f8;
+  --foreground: var(--grape);
   --surface: #ffffff;
-  --border: #e7e2f3;
-  --muted: #6b6480;
-  --accent: #c026d3;
-  --accent-2: #7c3aed;
+  --border: #d6dbe2;
+  --muted: #6b6470;
+  --accent: var(--teal);
+  --accent-foreground: #ffffff;
+  --accent-2: var(--clay);
 }
 
 @theme inline {
+  --color-teal: var(--teal);
+  --color-clay: var(--clay);
+  --color-slate: var(--slate);
+  --color-grape: var(--grape);
+  --color-tea: var(--tea);
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-surface: var(--surface);
   --color-border: var(--border);
   --color-muted: var(--muted);
   --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
   --color-accent-2: var(--accent-2);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
@@ -24,13 +46,15 @@
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0e0b16;
-    --foreground: #ede9f7;
-    --surface: #17131f;
-    --border: #2a2438;
-    --muted: #9a92b0;
-    --accent: #e879f9;
-    --accent-2: #a78bfa;
+    --background: #0b1e20;
+    --foreground: #eef1f4;
+    --surface: #12292c;
+    --border: #23403f;
+    --muted: var(--slate);
+    /* Teal is too dark to read on a dark background, so clay leads in dark mode */
+    --accent: var(--clay);
+    --accent-foreground: #1d1720;
+    --accent-2: var(--tea);
   }
 }
 

@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Resend Cosplay Collab (test app)
 
-## Getting Started
+A Next.js app for setting up cosplay collaborations over email, built to test [Resend](https://resend.com/docs): sending and receiving email with image attachments, scheduled sends, batch sends and idempotency keys.
 
-First, run the development server:
+Friction notes are in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
+
+## Stack
+
+- Next.js 16 (App Router, TypeScript, Tailwind)
+- [Resend Node SDK](https://resend.com/docs/send-with-nextjs)
+- SQLite via Drizzle ORM (a local `local.db` file, no database account or key needed)
+
+## Prerequisites
+
+- Node.js 20+ (built with Node 24) and npm
+- A Resend account with:
+  - an **API key** ([resend.com/api-keys](https://resend.com/api-keys))
+  - a **verified domain** with **sending** enabled
+  - **receiving** enabled on that domain, with its MX record added at your DNS provider (needed for inbound email)
+
+## Setup
+
+1. Clone the repo and install dependencies:
+
+   ```bash
+   git clone https://github.com/nexus-codingg/resend-cosplay-collab-test.git
+   cd resend-cosplay-collab-test
+   npm install
+   ```
+
+2. Create your env file from the example:
+
+   ```bash
+   cp .env.example .env.local
+   ```
+
+   Then fill in `.env.local`:
+
+   | Variable | Required | What it is |
+   |---|---|---|
+   | `RESEND_API_KEY` | Yes | Your Resend API key |
+   | `RESEND_FROM` | No | Sender on your verified domain. Defaults to `Nexus Cosplays <hello@collab.nexuscosplays.com>` |
+   | `DATABASE_URL` | No | Defaults to `file:local.db` |
+
+   `.env.local` is git-ignored. Never commit it.
+
+3. Create the local database:
+
+   ```bash
+   npm run db:migrate
+   ```
+
+## Start the app
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Useful scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Command | What it does |
+|---|---|
+| `npm run dev` | Start the dev server |
+| `npm run build` / `npm start` | Production build and server |
+| `npm run lint` | Run ESLint |
+| `npm run db:generate` | Generate a migration after changing `db/schema.ts` |
+| `npm run db:migrate` | Apply migrations to `local.db` |
+| `npm run db:studio` | Browse the database in Drizzle Studio |
+| `npm run test:receiving` | Send a test email to your receiving domain and confirm it arrives via the Receiving API |
 
-## Learn More
+`test:receiving` sends to `test@collab.nexuscosplays.com` by default. Set `TEST_INBOUND_TO` to use another address on your receiving domain.
 
-To learn more about Next.js, take a look at the following resources:
+## Project layout
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```
+app/            Next.js routes and pages
+db/schema.ts    Tables: cosplayers, collabs, messages, attachments
+db/index.ts     Drizzle client (server-only)
+lib/resend.ts   Resend client (server-only)
+drizzle/        Generated SQL migrations
+scripts/        One-off test scripts
+docs/           Friction log
+```

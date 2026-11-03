@@ -40,15 +40,29 @@ Friction notes are in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
    |---|---|---|
    | `RESEND_API_KEY` | Yes | Your Resend API key |
    | `RESEND_FROM` | No | Sender on your verified domain. Defaults to `Nexus Cosplays <hello@collab.nexuscosplays.com>` |
+| `RESEND_INBOUND_DOMAIN` | No | Domain with receiving enabled, used for `collab+<token>@…` reply-to addresses. Defaults to `collab.nexuscosplays.com` |
    | `DATABASE_URL` | No | Defaults to `file:local.db` |
 
    `.env.local` is git-ignored. Never commit it.
 
-3. Create the local database:
+3. Create the local database and add sample cosplayers:
 
    ```bash
    npm run db:migrate
    ```
+
+   ```bash
+   npm run db:seed
+   ```
+
+   Seeded cosplayers get addresses on the receiving domain (e.g. `luna@collab.nexuscosplays.com`), so test emails land in your Resend Receiving tab. Set `SEED_EMAIL_DOMAIN` to use another domain.
+
+## Using the app
+
+1. Open a cosplayer from the gallery on the home page.
+2. Fill in **Propose a collab**: your name, a subject, a message, and up to 5 reference images (10MB total).
+3. Click **Send collab request**. The email goes out through Resend with the images attached, and you land on the collab's thread page.
+4. **Collabs** in the header lists every collab you've started.
 
 ## Start the app
 
@@ -67,6 +81,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run lint` | Run ESLint |
 | `npm run db:generate` | Generate a migration after changing `db/schema.ts` |
 | `npm run db:migrate` | Apply migrations to `local.db` |
+| `npm run db:seed` | Add sample cosplayers (safe to re-run) |
 | `npm run db:studio` | Browse the database in Drizzle Studio |
 | `npm run test:receiving` | Send a test email to your receiving domain and confirm it arrives via the Receiving API |
 

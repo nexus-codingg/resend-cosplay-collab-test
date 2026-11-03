@@ -32,6 +32,21 @@ Rating: 🟢 smooth · 🟡 minor friction · 🔴 blocker
 
 ### Phase 2: Send interest email with images
 
+What was built: a cosplayer gallery, a "Propose a collab" form (Server Action plus `useActionState`) with up to 5 images, and a thread page per collab. Each send uses:
+- `replyTo: collab+<token>@collab.nexuscosplays.com`, so replies can be routed back to the thread in Phase 3
+- `attachments: [{ filename, content: Buffer, contentType }]`
+- `tags: [{ name: "type", value: "collab_interest" }]`
+- `idempotencyKey: "collab-interest/<token>"`, where the token is generated when the form renders, so a double-click or retry reuses the same key
+
+Results:
+- 🟢 First real send worked: status `delivered`, and the received copy (via `emails.receiving.list()`) shows both PNGs with the right filename, content type and byte size, plus the `collab+…` reply-to.
+- 🟢 Passing a Node `Buffer` as `content` just works; no manual base64 needed. The SDK types document `content?: string | Buffer | Uint8Array | ArrayBuffer`.
+- 🟢 The SDK's `{ data, error }` return made the Server Action error handling simple: show `error.name` and `error.message` in the form.
+- 🟡 The Send Email API reference doesn't show the Node camelCase names (`replyTo`, `scheduledAt`, `contentType`, `contentId`). I had to read the SDK's `.d.mts` types to confirm them.
+- 🟡 Not a Resend issue, but it affects anyone sending attachments from a Next.js form: Server Actions cap request bodies at **1MB** by default. Attachments need `experimental.serverActions.bodySizeLimit` raised. The Next.js quickstart could mention this next to attachments.
+- 🟡 Inline images (`contentId` with `cid:`) are documented on the attachments page but not in the Next.js guide. I used plain attachments; inline previews could be a nice follow-up.
+- ℹ️ Seed cosplayers use `<name>@collab.nexuscosplays.com`, so every test send lands in our own Receiving tab and attachments can be checked through the API.
+
 ### Phase 3: Receive email with images
 
 ### Phase 4: Threaded reply with images

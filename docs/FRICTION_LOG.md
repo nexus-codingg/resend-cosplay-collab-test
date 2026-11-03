@@ -17,6 +17,13 @@ Rating: 🟢 smooth · 🟡 minor friction · 🔴 blocker
 
 ### Phase 1: Project setup
 
+- 🟢 `npm install resend` (v6.37.0) worked first try; API key confirmed with `resend.domains.list()`.
+- 🟢 Sending domain `collab.nexuscosplays.com` verified in the dashboard before starting.
+- 🟡 The Next.js quickstart (send-with-nextjs) only shows a Route Handler, not Server Actions, which are the default way to handle forms in the App Router.
+- 🟡 The quickstart's best-practice notes say not to wrap `emails.send()` in try/catch, but its App Router example does exactly that.
+- 🟡 The quickstart says to call templates as `EmailTemplate({...})`, not as JSX. Worth explaining why.
+- ℹ️ Receiving is **disabled** on `collab.nexuscosplays.com`. It needs enabling (MX record) before Phase 3, or use the `.resend.app` address.
+
 ### Phase 2: Send interest email with images
 
 ### Phase 3: Receive email with images

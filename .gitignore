@@ -21,3 +21,6 @@ public/uploads/
 .DS_Store
 *.log
 .vercel
+
+# typescript
+*.tsbuildinfo

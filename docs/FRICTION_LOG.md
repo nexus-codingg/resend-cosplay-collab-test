@@ -49,6 +49,25 @@ Results:
 
 ### Phase 3: Receive email with images
 
+What was built: a webhook route (`app/api/webhooks/resend/route.ts`) that verifies the signature, then for `email.received`:
+1. matches `collab+<token>@` in `to` / `cc` / `received_for`
+2. skips repeat deliveries
+3. calls `emails.receiving.get()` for the body
+4. calls `emails.receiving.attachments.list()` and downloads each `download_url`
+5. strips the quoted original
+6. saves the reply and moves the collab to Discussing
+
+Results:
+- 🟢 End-to-end inbound logic works: a reply sent as `luna@` to `collab+<token>@` showed up in Receiving within seconds. A signed `email.received` event to the route fetched the body, downloaded the PNG and showed it on the thread.
+- 🟢 Signature verification rejects forged requests with a 400.
+- 🟢 `received_for` and the "branch on `to`" tip make plus-addressing routing easy.
+- 🟢 `emails.receiving.get()` has a `html_format: 'data_uri' | 'cid'` option for inline images. It's useful, but I only found it in the SDK types, not in the "Get email content" guide.
+- 🔴 `resend.webhooks.verify()` takes `headers: { id, timestamp, signature }`, an SDK-specific type that's **also named `Headers`**. The docs pass the Svix header values, so passing `request.headers` (the Fetch `Headers` object) feels natural, and TypeScript rejects it with the confusing message "Type 'Headers' is missing the following properties from type 'Headers'". Suggestions: accept a Fetch `Headers` object directly, or rename the type and show the mapping from `svix-id`, `svix-timestamp` and `svix-signature` in the docs.
+- 🟡 The "Create receiving webhook" guide's Next.js example parses `request.json()` and skips verification. Copying it as-is leaves an unauthenticated endpoint. The verify guide warns you need the **raw** body, which the receiving example doesn't use. Showing verification in the receiving example would help.
+- 🟡 Retry behavior and expected response codes aren't documented on the receiving pages. I assumed a 5xx triggers a retry and made the handler skip repeats.
+- 🟡 Local development needs a public tunnel (the docs suggest ngrok or VS Code port forwarding). There's no way to send a test `email.received` to localhost without one, so I wrote `scripts/simulate-reply.mjs --deliver-locally`, which signs events the Svix way. A built-in "send test event" or CLI forwarding (like `stripe listen`) would remove this step.
+- ℹ️ Sending "as" the cosplayer works because the seeded cosplayers use our own verified domain. That made it easy to simulate realistic replies, including attachments, without a second mailbox.
+
 ### Phase 4: Threaded reply with images
 
 ### Phase 5: Send / schedule / batch / idempotency

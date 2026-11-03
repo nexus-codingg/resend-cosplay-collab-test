@@ -40,6 +40,7 @@ Friction notes are in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
    |---|---|---|
    | `RESEND_API_KEY` | Yes | Your Resend API key |
    | `RESEND_FROM` | No | Sender on your verified domain. Defaults to `Nexus Cosplays <hello@collab.nexuscosplays.com>` |
+| `RESEND_WEBHOOK_SECRET` | For receiving | Signing secret of your Resend webhook, used to verify incoming webhook requests |
 | `RESEND_INBOUND_DOMAIN` | No | Domain with receiving enabled, used for `collab+<token>@…` reply-to addresses. Defaults to `collab.nexuscosplays.com` |
    | `DATABASE_URL` | No | Defaults to `file:local.db` |
 
@@ -57,12 +58,45 @@ Friction notes are in [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md).
 
    Seeded cosplayers get addresses on the receiving domain (e.g. `luna@collab.nexuscosplays.com`), so test emails land in your Resend Receiving tab. Set `SEED_EMAIL_DOMAIN` to use another domain.
 
+## Receiving replies (webhook setup)
+
+Replies to a collab email go to `collab+<token>@collab.nexuscosplays.com`. Resend receives them and sends an `email.received` webhook to the app, which saves the reply and its images to the collab's thread.
+
+Resend has to reach your laptop for this, so in development you need a public tunnel.
+
+1. With `npm run dev` running, start a tunnel in a second terminal (install once with `brew install cloudflared`):
+
+   ```bash
+   cloudflared tunnel --url http://localhost:3000
+   ```
+
+   Copy the `https://<random>.trycloudflare.com` URL it prints. It changes every time you restart the tunnel.
+
+2. In the Resend dashboard, go to **Webhooks → Add Webhook**:
+   - **URL:** `https://<random>.trycloudflare.com/api/webhooks/resend`
+   - **Event:** `email.received`
+
+3. Open the new webhook, copy its **signing secret** (`whsec_...`), and set it as `RESEND_WEBHOOK_SECRET` in `.env.local`.
+
+4. Test it end to end:
+
+   ```bash
+   npm run simulate:reply
+   ```
+
+   This sends a reply with an image from the latest collab's cosplayer. Within a few seconds it should appear on that collab's thread page.
+
+If you restart the tunnel, update the webhook URL in the dashboard.
+
+**Without a tunnel:** `npm run simulate:reply -- --deliver-locally` sends the reply the same way, then signs an `email.received` event with your `RESEND_WEBHOOK_SECRET` and POSTs it to the local route itself. This tests everything except Resend's delivery to your machine.
+
 ## Using the app
 
 1. Open a cosplayer from the gallery on the home page.
 2. Fill in **Propose a collab**: your name, a subject, a message, and up to 5 reference images (10MB total).
 3. Click **Send collab request**. The email goes out through Resend with the images attached, and you land on the collab's thread page.
-4. **Collabs** in the header lists every collab you've started.
+4. When the cosplayer replies, the reply shows up on the thread with its images, and the collab moves from **Pending** to **Discussing**.
+5. **Collabs** in the header lists every collab you've started.
 
 ## Start the app
 
@@ -83,6 +117,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:migrate` | Apply migrations to `local.db` |
 | `npm run db:seed` | Add sample cosplayers (safe to re-run) |
 | `npm run db:studio` | Browse the database in Drizzle Studio |
+| `npm run simulate:reply` | Send a cosplayer reply with an image to the latest collab (add `-- --deliver-locally` to skip the tunnel) |
 | `npm run test:receiving` | Send a test email to your receiving domain and confirm it arrives via the Receiving API |
 
 `test:receiving` sends to `test@collab.nexuscosplays.com` by default. Set `TEST_INBOUND_TO` to use another address on your receiving domain.
@@ -95,6 +130,8 @@ app/
 ├── page.tsx
 ├── globals.css
 ├── actions.ts
+├── api/webhooks/resend/
+│   └── route.ts
 ├── components/
 │   ├── avatar.tsx
 │   ├── theme-toggle.tsx
@@ -109,6 +146,7 @@ app/
 lib/
 ├── resend.ts
 ├── data.ts
+├── inbound.ts
 ├── uploads.ts
 ├── email-html.ts
 └── theme.ts
@@ -118,6 +156,7 @@ db/
 drizzle/
 scripts/
 ├── seed.mjs
+├── simulate-reply.mjs
 └── test-receiving.mjs
 docs/
 └── FRICTION_LOG.md
@@ -136,9 +175,11 @@ docs/
 ### Server logic
 
 - [app/actions.ts](app/actions.ts): the Server Action that runs when you send a collab request. Checks the form, saves images, sends the email through Resend (attachments, `collab+<token>` reply-to, tag, idempotency key) and saves the collab to the database
+- [app/api/webhooks/resend/route.ts](app/api/webhooks/resend/route.ts): the webhook endpoint Resend calls. Checks the signature using the raw request body, ignores events other than `email.received`, and returns a 500 on failure so Resend retries
+- [lib/inbound.ts](lib/inbound.ts): handles a received email. Finds the collab from the `collab+<token>` address, skips repeat deliveries, fetches the body (the webhook only carries metadata), downloads the attachments right away (their links expire after 1 hour), strips the quoted original from the reply, saves it, and moves the collab to Discussing
 - [lib/resend.ts](lib/resend.ts): the shared Resend client plus the sender address and receiving domain settings (server-only, so the API key never reaches the browser)
 - [lib/data.ts](lib/data.ts): database reads used by the pages: cosplayers, collabs, and a full thread with its messages and attachments
-- [lib/uploads.ts](lib/uploads.ts): image upload rules (5 files, 10MB total, images only) and saving files to `public/uploads/`
+- [lib/uploads.ts](lib/uploads.ts): image upload rules (5 files, 10MB total, images only) and saving files (uploads and downloaded inbound attachments) to `public/uploads/`
 - [lib/email-html.ts](lib/email-html.ts): builds the HTML body of the collab request email, escaping what you typed
 
 ### Shared components
@@ -159,6 +200,7 @@ docs/
 ### Scripts and docs
 
 - [scripts/seed.mjs](scripts/seed.mjs): adds the sample cosplayers (`npm run db:seed`)
+- [scripts/simulate-reply.mjs](scripts/simulate-reply.mjs): sends a cosplayer reply with an image to the latest collab. With `--deliver-locally` it also signs and POSTs the webhook itself (`npm run simulate:reply`)
 - [scripts/test-receiving.mjs](scripts/test-receiving.mjs): sends a test email to the receiving domain and waits for it to arrive (`npm run test:receiving`)
 - [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md): notes on what was smooth or confusing in Resend while building this
 

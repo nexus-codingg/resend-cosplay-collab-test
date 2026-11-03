@@ -32,21 +32,32 @@ export function readImageFiles(
 
 /** Saves files under public/uploads/<folder>/ so the app can show them later. */
 export async function storeFiles(files: File[], folder: string): Promise<StoredFile[]> {
+  return storeBuffers(
+    await Promise.all(
+      files.map(async (file) => ({
+        filename: file.name,
+        contentType: file.type,
+        content: Buffer.from(await file.arrayBuffer()),
+      })),
+    ),
+    folder,
+  );
+}
+
+/** Same as storeFiles, for content that's already in memory (e.g. inbound attachments). */
+export async function storeBuffers(
+  items: { filename: string; contentType: string; content: Buffer }[],
+  folder: string,
+): Promise<StoredFile[]> {
   const dir = path.join(process.cwd(), "public", "uploads", folder);
   await mkdir(dir, { recursive: true });
 
   return Promise.all(
-    files.map(async (file, i) => {
-      const safeName = file.name.replace(/[^\w.-]+/g, "_") || `image-${i}`;
+    items.map(async (item, i) => {
+      const safeName = item.filename.replace(/[^\w.-]+/g, "_") || `file-${i}`;
       const filename = `${i}-${safeName}`;
-      const content = Buffer.from(await file.arrayBuffer());
-      await writeFile(path.join(dir, filename), content);
-      return {
-        filename: file.name,
-        contentType: file.type,
-        storagePath: `/uploads/${folder}/${filename}`,
-        content,
-      };
+      await writeFile(path.join(dir, filename), item.content);
+      return { ...item, storagePath: `/uploads/${folder}/${filename}` };
     }),
   );
 }

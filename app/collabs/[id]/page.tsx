@@ -77,10 +77,12 @@ async function Thread({ params }: { params: PageProps<"/collabs/[id]">["params"]
         ))}
       </ol>
 
-      <p className="mt-8 rounded-xl border border-dashed border-border p-4 text-sm text-muted">
-        Replies from {thread.cosplayer.name.split(" ")[0]} will show up here once receiving is
-        wired up (Phase 3).
-      </p>
+      {!thread.messages.some((m) => m.direction === "inbound") && (
+        <p className="mt-8 rounded-xl border border-dashed border-border p-4 text-sm text-muted">
+          Waiting for {thread.cosplayer.name.split(" ")[0]} to reply. Replies show up here
+          automatically. Refresh to check.
+        </p>
+      )}
     </div>
   );
 }

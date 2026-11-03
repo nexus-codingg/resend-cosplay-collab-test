@@ -87,14 +87,85 @@ Open [http://localhost:3000](http://localhost:3000).
 
 `test:receiving` sends to `test@collab.nexuscosplays.com` by default. Set `TEST_INBOUND_TO` to use another address on your receiving domain.
 
-## Project layout
+## File structure
 
 ```
-app/            Next.js routes and pages
-db/schema.ts    Tables: cosplayers, collabs, messages, attachments
-db/index.ts     Drizzle client (server-only)
-lib/resend.ts   Resend client (server-only)
-drizzle/        Generated SQL migrations
-scripts/        One-off test scripts
-docs/           Friction log
+app/
+├── layout.tsx
+├── page.tsx
+├── globals.css
+├── actions.ts
+├── components/
+│   ├── avatar.tsx
+│   ├── theme-toggle.tsx
+│   └── inline-script.tsx
+├── cosplayers/[id]/
+│   ├── page.tsx
+│   └── propose-form.tsx
+└── collabs/
+    ├── page.tsx
+    ├── status-badge.tsx
+    └── [id]/page.tsx
+lib/
+├── resend.ts
+├── data.ts
+├── uploads.ts
+├── email-html.ts
+└── theme.ts
+db/
+├── schema.ts
+└── index.ts
+drizzle/
+scripts/
+├── seed.mjs
+└── test-receiving.mjs
+docs/
+└── FRICTION_LOG.md
 ```
+
+### Pages (`app/`)
+
+- [app/layout.tsx](app/layout.tsx): the shell around every page: header with logo, nav links and the theme toggle; fonts; the script that applies your saved theme before the page is drawn
+- [app/page.tsx](app/page.tsx): home page (`/`): the cosplayer gallery
+- [app/cosplayers/[id]/page.tsx](app/cosplayers/[id]/page.tsx): a cosplayer's profile (`/cosplayers/1`) with the propose-a-collab form. Creates the one-time id used as the reply token and idempotency key
+- [app/cosplayers/[id]/propose-form.tsx](app/cosplayers/[id]/propose-form.tsx): the form itself (name, subject, message, images), with image previews, errors and a sending state
+- [app/collabs/page.tsx](app/collabs/page.tsx): list of every collab you've started (`/collabs`)
+- [app/collabs/[id]/page.tsx](app/collabs/[id]/page.tsx): one collab's thread (`/collabs/1`): messages, attached images and Resend email ids
+- [app/globals.css](app/globals.css): the color palette and the light and dark colors
+
+### Server logic
+
+- [app/actions.ts](app/actions.ts): the Server Action that runs when you send a collab request. Checks the form, saves images, sends the email through Resend (attachments, `collab+<token>` reply-to, tag, idempotency key) and saves the collab to the database
+- [lib/resend.ts](lib/resend.ts): the shared Resend client plus the sender address and receiving domain settings (server-only, so the API key never reaches the browser)
+- [lib/data.ts](lib/data.ts): database reads used by the pages: cosplayers, collabs, and a full thread with its messages and attachments
+- [lib/uploads.ts](lib/uploads.ts): image upload rules (5 files, 10MB total, images only) and saving files to `public/uploads/`
+- [lib/email-html.ts](lib/email-html.ts): builds the HTML body of the collab request email, escaping what you typed
+
+### Shared components
+
+- [app/components/avatar.tsx](app/components/avatar.tsx): round avatar with initials and a palette gradient
+- [app/components/theme-toggle.tsx](app/components/theme-toggle.tsx): the sun/moon button
+- [app/components/inline-script.tsx](app/components/inline-script.tsx): helper that renders the theme script without a React warning
+- [app/collabs/status-badge.tsx](app/collabs/status-badge.tsx): the Pending / Discussing / Confirmed badge
+- [lib/theme.ts](lib/theme.ts): the script that applies your saved theme on load
+
+### Database
+
+- [db/schema.ts](db/schema.ts): the tables: `cosplayers`, `collabs`, `messages`, `attachments`
+- [db/index.ts](db/index.ts): connects Drizzle to the local SQLite file (server-only)
+- [drizzle/](drizzle): generated SQL migrations. Don't edit them; change `db/schema.ts` and run `npm run db:generate`
+- [drizzle.config.ts](drizzle.config.ts): tells drizzle-kit where the schema, migrations and database are
+
+### Scripts and docs
+
+- [scripts/seed.mjs](scripts/seed.mjs): adds the sample cosplayers (`npm run db:seed`)
+- [scripts/test-receiving.mjs](scripts/test-receiving.mjs): sends a test email to the receiving domain and waits for it to arrive (`npm run test:receiving`)
+- [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md): notes on what was smooth or confusing in Resend while building this
+
+### Config
+
+- [next.config.ts](next.config.ts): Next.js settings, including the raised upload limit for Server Actions (11MB)
+- [.env.example](.env.example): template for `.env.local`
+- [AGENTS.md](AGENTS.md): created by Next.js for AI coding agents; it says to check the Next.js docs bundled in `node_modules` because this version differs from older ones
+
+Not in git: `.env.local` (your keys), `local.db` (the database) and `public/uploads/` (uploaded images).

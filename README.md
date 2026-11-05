@@ -64,19 +64,25 @@ Replies to a collab email go to `collab+<token>@collab.nexuscosplays.com`. Resen
 
 Resend has to reach your laptop for this, so in development you need a public tunnel.
 
+**Where the webhook URL comes from:** Resend doesn't give you one. You give Resend the address of your app, and on your laptop that address comes from the tunnel. [cloudflared](https://developers.cloudflare.com/cloudflare-one/connections/connect-apps/do-more-with-tunnels/trycloudflare/) (Cloudflare Tunnel) creates a temporary public URL on `trycloudflare.com` and forwards every request to `localhost:3000`. No Cloudflare account is needed.
+
 1. With `npm run dev` running, start a tunnel in a second terminal (install once with `brew install cloudflared`):
 
    ```bash
    cloudflared tunnel --url http://localhost:3000
    ```
 
-   Copy the `https://<random>.trycloudflare.com` URL it prints. It changes every time you restart the tunnel.
+   What to expect:
+   - It prints a lot of log lines. The one that matters is a box saying **"Your quick Tunnel has been created!"** with a URL like `https://acoustic-cuisine-reading-using.trycloudflare.com`. That's your app's public address.
+   - It may take a few seconds before the URL works. Opening it in a browser should show the app.
+   - The terminal stays busy while the tunnel runs. **Leave it open.** Closing it or pressing Ctrl+C stops the tunnel and the URL stops working.
+   - You get a **new random URL every time** you start it. Quick tunnels have no uptime guarantee and are only for testing.
 
 2. In the Resend dashboard, go to **Webhooks → Add Webhook**:
-   - **URL:** `https://<random>.trycloudflare.com/api/webhooks/resend`
+   - **Endpoint URL:** the tunnel URL plus the app's webhook route, e.g. `https://acoustic-cuisine-reading-using.trycloudflare.com/api/webhooks/resend`
    - **Event:** `email.received`
 
-3. Open the new webhook, copy its **signing secret** (`whsec_...`), and set it as `RESEND_WEBHOOK_SECRET` in `.env.local`.
+3. After you click **Add**, open the new webhook and copy its **signing secret** (`whsec_...`). It only exists once the webhook is created. Set it as `RESEND_WEBHOOK_SECRET` in `.env.local`, then restart `npm run dev` so the app picks it up.
 
 4. Test it end to end:
 
@@ -86,7 +92,9 @@ Resend has to reach your laptop for this, so in development you need a public tu
 
    This sends a reply with an image from the latest collab's cosplayer. Within a few seconds it should appear on that collab's thread page.
 
-If you restart the tunnel, update the webhook URL in the dashboard.
+If you restart the tunnel, edit the webhook in the dashboard and replace the endpoint URL with the new one. The signing secret stays the same.
+
+In production you'd skip the tunnel and use your deployed URL, e.g. `https://yourapp.com/api/webhooks/resend`.
 
 **Without a tunnel:** `npm run simulate:reply -- --deliver-locally` sends the reply the same way, then signs an `email.received` event with your `RESEND_WEBHOOK_SECRET` and POSTs it to the local route itself. This tests everything except Resend's delivery to your machine.
 

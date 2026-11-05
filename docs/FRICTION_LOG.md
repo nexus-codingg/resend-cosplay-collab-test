@@ -74,6 +74,23 @@ Results:
 
 ### Phase 4: Threaded reply with images
 
+What was built: a reply form on each thread page (message, date, location, "mark as confirmed", images). The `replyToCollab` Server Action sends:
+- `headers: { "In-Reply-To": <latest Message-ID>, References: <every Message-ID in the thread> }`
+- the same `collab+<token>` reply-to, so the next reply lands on the same thread
+- image attachments
+- `tags: [{ name: "type", value: "collab_reply" }]`
+- `idempotencyKey: "collab-reply/<id>"`, with a new id for each reply
+
+Results:
+- 🟢 The "Reply to emails" guide is short and clear: set `In-Reply-To` to the received `message_id`, add `References` for longer threads, and start the subject with `Re:`. It worked first try.
+- 🟢 The received copy shows `In-Reply-To` set to Luna's reply, `References` listing both earlier emails in order, the `collab+` reply-to, and both PNGs with the right names and sizes. The raw MIME (`raw.download_url`) has a standard folded `References` header.
+- 🟢 Custom `headers` and `attachments` work together on a normal `emails.send()`; no special reply API is needed.
+- 🟡 The guide only covers replying to a **received** email. For `References` you also need the Message-ID of emails **you sent**, but `emails.send()` returns only the Resend `id`. The Message-ID is only available later through `emails.get(id).message_id`. I look it up when needed and save it. Returning `message_id` from `send()` (or noting this in the guide) would save the extra call.
+- 🟡 In `emails.receiving.get()`, multi-value headers come back as a **JSON array string**: `references: '["<a@…>","<b@…>"]'`, while the raw email has the normal space-separated header. The type says `Record<string, string>`, so you have to know to `JSON.parse` it. It isn't documented.
+- 🟡 The guide doesn't mention attachments on replies, or whether to keep the same `reply_to`. Both work exactly like a normal send, but a sentence would help.
+- ℹ️ The reply to `luna@` is also received by our own domain, and the webhook correctly ignored it (`not addressed to a collab+<token> address`). Routing on the plus-address keeps our own outbound copies out of threads.
+- ℹ️ Subject prefixes like `Phase 4 test:` before `Re:` are fine for testing. Mail clients thread on the headers, but some (e.g. Gmail) also look at the subject, so a real app should keep `Re: <original subject>`.
+
 ### Phase 5: Send / schedule / batch / idempotency
 
 ## Summary

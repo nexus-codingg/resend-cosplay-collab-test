@@ -1,10 +1,9 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { useActionState } from "react";
 import { proposeCollab, type ProposeState } from "../../actions";
-
-const inputClass =
-  "w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-accent";
+import { inputClass } from "../../components/field-styles";
+import { ImageInput } from "../../components/image-input";
 
 export function ProposeForm({
   cosplayerId,
@@ -19,7 +18,6 @@ export function ProposeForm({
     proposeCollab,
     {},
   );
-  const [previews, setPreviews] = useState<{ name: string; url: string }[]>([]);
 
   return (
     <form action={formAction} className="mt-6 flex flex-col gap-4">
@@ -59,39 +57,7 @@ export function ProposeForm({
         />
       </label>
 
-      <label className="flex flex-col gap-1 text-sm font-medium">
-        Reference images <span className="font-normal text-muted">(up to 5, 10MB total)</span>
-        <input
-          type="file"
-          name="images"
-          accept="image/*"
-          multiple
-          onChange={(e) => {
-            previews.forEach((p) => URL.revokeObjectURL(p.url));
-            setPreviews(
-              Array.from(e.target.files ?? []).map((f) => ({
-                name: f.name,
-                url: URL.createObjectURL(f),
-              })),
-            );
-          }}
-          className="text-sm text-muted file:mr-3 file:rounded-full file:border-0 file:bg-accent/10 file:px-4 file:py-2 file:text-sm file:font-medium file:text-accent"
-        />
-      </label>
-
-      {previews.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {previews.map((p) => (
-            // eslint-disable-next-line @next/next/no-img-element -- local blob preview
-            <img
-              key={p.url}
-              src={p.url}
-              alt={p.name}
-              className="h-20 w-20 rounded-lg border border-border object-cover"
-            />
-          ))}
-        </div>
-      )}
+      <ImageInput label="Reference images" />
 
       {state.error && (
         <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600">

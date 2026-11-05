@@ -4,6 +4,7 @@ import { Suspense } from "react";
 import { getCollabThread } from "@/lib/data";
 import { Avatar } from "../../components/avatar";
 import { StatusBadge } from "../status-badge";
+import { ReplyForm } from "./reply-form";
 
 export default function CollabPage({ params }: PageProps<"/collabs/[id]">) {
   return (
@@ -22,6 +23,8 @@ async function Thread({ params }: { params: PageProps<"/collabs/[id]">["params"]
   const { id } = await params;
   const thread = await getCollabThread(Number(id));
   if (!thread) notFound();
+  const firstName = thread.cosplayer.name.split(" ")[0];
+  const requestId = crypto.randomUUID();
 
   return (
     <div className="mt-6">
@@ -79,10 +82,22 @@ async function Thread({ params }: { params: PageProps<"/collabs/[id]">["params"]
 
       {!thread.messages.some((m) => m.direction === "inbound") && (
         <p className="mt-8 rounded-xl border border-dashed border-border p-4 text-sm text-muted">
-          Waiting for {thread.cosplayer.name.split(" ")[0]} to reply. Replies show up here
-          automatically. Refresh to check.
+          Waiting for {firstName} to reply. Replies show up here automatically. Refresh to
+          check.
         </p>
       )}
+
+      <section className="mt-10 rounded-2xl border border-border bg-surface p-5">
+        <h2 className="mb-4 text-lg font-semibold">Reply to {firstName}</h2>
+        {/* New id per render: each reply gets its own idempotency key, and the form resets */}
+        <ReplyForm
+          key={requestId}
+          collabId={thread.collab.id}
+          requestId={requestId}
+          defaultSubject={`Re: ${thread.messages[0]?.subject.replace(/^Re:\s*/i, "") ?? "our collab"}`}
+          firstName={firstName}
+        />
+      </section>
     </div>
   );
 }

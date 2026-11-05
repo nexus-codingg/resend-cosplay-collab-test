@@ -10,6 +10,7 @@
 // Run: npm run simulate:reply                      (real webhook delivers it)
 //      npm run simulate:reply -- --deliver-locally  (sign and deliver it yourself)
 //      npm run simulate:reply -- --collab 2         (pick a collab, default: latest)
+//      npm run simulate:reply -- --label "Phase 4 test" (subject label, default: Phase 3 test)
 import { createHmac, randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
@@ -19,6 +20,8 @@ import { Resend } from "resend";
 const args = process.argv.slice(2);
 const deliverLocally = args.includes("--deliver-locally");
 const collabArg = args.indexOf("--collab");
+const labelArg = args.indexOf("--label");
+const label = labelArg !== -1 ? args[labelArg + 1] : "Phase 3 test";
 const appUrl = process.env.APP_URL ?? "http://localhost:3000";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
@@ -42,7 +45,11 @@ if (!collab) {
 }
 
 const to = `collab+${collab.reply_token}@${inboundDomain}`;
-const subject = `Re: ${collab.subject} (${new Date().toISOString().slice(11, 19)})`;
+// Label first so each testing phase is easy to spot in the Resend dashboard,
+// e.g. "Phase 3 test: Re: Sailor Moon group shoot (02:28:55)". The original
+// subject's own "Phase N test:" label is dropped to avoid mixing phases.
+const originalSubject = String(collab.subject).replace(/^Phase \d+ test:\s*/i, "");
+const subject = `${label}: Re: ${originalSubject} (${new Date().toISOString().slice(11, 19)})`;
 const firstName = String(collab.name).split(" ")[0];
 const attachments = collab.image
   ? [

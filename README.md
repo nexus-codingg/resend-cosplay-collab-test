@@ -125,7 +125,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:migrate` | Apply migrations to `local.db` |
 | `npm run db:seed` | Add sample cosplayers (safe to re-run) |
 | `npm run db:studio` | Browse the database in Drizzle Studio |
-| `npm run simulate:reply` | Send a cosplayer reply with an image to the latest collab (add `-- --deliver-locally` to skip the tunnel) |
+| `npm run simulate:reply` | Send a cosplayer reply with an image to the latest collab (add `-- --deliver-locally` to skip the tunnel). Subjects start with `Phase 3 test:`; change the label with `-- --label "Phase 4 test"` |
 | `npm run test:receiving` | Send a test email to your receiving domain and confirm it arrives via the Receiving API |
 
 `test:receiving` sends to `test@collab.nexuscosplays.com` by default. Set `TEST_INBOUND_TO` to use another address on your receiving domain.

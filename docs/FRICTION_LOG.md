@@ -15,6 +15,8 @@ Rating: 🟢 smooth · 🟡 minor friction · 🔴 blocker
 
 ### Phase 0: GitHub setup
 
+- 🟢 Private repo created and pushed with no issues.
+
 ### Phase 1: Project setup
 
 - 🟢 `npm install resend` (v6.37.0) worked first try; API key confirmed with `resend.domains.list()`.
@@ -134,3 +136,41 @@ Friction:
 - ℹ️ The concurrent case never produced `409 concurrent_idempotent_requests`; both simultaneous requests got the same id. That's safe, but I couldn't trigger the documented error.
 
 ## Summary
+
+Every feature in scope worked on the real API: sending with images, receiving with images, threaded replies, scheduling (send, reschedule, cancel), batch sending and idempotency keys. Nothing blocked the build. The friction came from three places: behavior that differs from what the docs or types say, details that are only in the SDK type definitions, and local webhook setup.
+
+**Tally:** 🔴 3 · 🟡 30 · 🟢 30 (a Phase 5 table row that repeats a bullet is counted once)
+
+### What worked well
+
+- **Sending is easy to get right.** The `{ data, error }` return, `Buffer` attachments and per-request idempotency keys made the Server Actions short and safe to retry.
+- **Threading works first try.** Custom `In-Reply-To`/`References` headers on a normal `emails.send()` produced correctly threaded mail, with attachments.
+- **Idempotency behaves exactly as documented.** Same payload returns the same id, a different payload gets a 409, and two requests at once send only one email, for single and batch sends.
+- **Scheduling management is complete.** Update, cancel and the 30-day limit all return clear errors, and natural-language times are a nice touch.
+- **Plus-address routing on receive** (`received_for`, branch on `to`) made it simple to map replies to threads and ignore our own outbound copies.
+
+### Top issues (fix these first)
+
+1. 🔴 **Batch sends drop attachments silently.** The API returns 200 and the email arrives without its files. Return a `422` instead.
+2. 🔴 **`webhooks.verify()` takes an SDK type also named `Headers`**, so passing `request.headers` fails with "Type 'Headers' is missing the following properties from type 'Headers'". Accept a Fetch `Headers` object, or rename the type and show the `svix-*` mapping.
+3. 🔴 **`dns.email/lookup` flags a verified Forge MX record as Invalid**, while the dashboard says it's verified. Two Resend tools give opposite answers.
+4. 🟡 **Webhook setup is easy to get silently wrong.** The Add webhook dialog doesn't explain the URL or when the signing secret appears, and an endpoint missing its path shows "success" when the home page answers 200 with HTML.
+5. 🟡 **Natural-language clock times are UTC**, and that isn't documented. "tomorrow at 9am" sends at 4am in New York.
+6. 🟡 **`send()` returns only the Resend id.** Threading needs the `message_id`, and scheduling needs `scheduled_at`, which briefly reads `null` (with `last_event: "queued"`) right after scheduling. Both cost an extra `emails.get()`, sometimes with a retry.
+
+### Docs gaps (only found in SDK types or by testing)
+
+- The batch page doesn't mention `batchValidation: "permissive"`, idempotency keys, or the name of the scheduling field.
+- The Send Email reference doesn't show Node's camelCase names (`replyTo`, `scheduledAt`, `contentType`, `contentId`).
+- `emails.receiving.get()` returns multi-value headers like `references` as a JSON array string; its `html_format` option is also only in the types.
+- The SDK comment on `scheduledAt` says ISO 8601 only, though natural language works.
+- The receiving webhook example skips signature verification and parses the body as JSON, which breaks verification if copied.
+- Not documented: webhook retry behavior and expected response codes, scheduling precision (sends were 60–90s late), the `scheduled_at` format (not ISO 8601), and attachments or reply-to on replies.
+
+### Developer-experience ideas
+
+- A way to send test webhook events to localhost (like `stripe listen`), so local development doesn't need a tunnel.
+- Delete or archive for test emails, or filtering by tag in the dashboard.
+- Show which sending engine (Forge or legacy) sent each email.
+- Mention in the idempotency docs that everything in the payload must be deterministic for a given key, and that a `429` can look like an expected rejection in retry loops.
+- Make network failures distinct from API errors (today they arrive as `application_error` with `statusCode: null`).

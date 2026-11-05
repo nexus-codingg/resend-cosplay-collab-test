@@ -1,0 +1,1 @@
+ALTER TABLE `messages` ADD `canceled_at` text;

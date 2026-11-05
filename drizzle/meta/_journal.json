@@ -8,6 +8,13 @@
       "when": 1793740844018,
       "tag": "0000_wooden_sage",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1793847274736,
+      "tag": "0001_whole_fenris",
+      "breakpoints": true
     }
   ]
 }

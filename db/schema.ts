@@ -40,7 +40,9 @@ export const messages = sqliteTable("messages", {
   resendEmailId: text("resend_email_id"),
   // RFC Message-ID header, used for In-Reply-To / References threading
   messageIdHeader: text("message_id_header"),
+  // Set for scheduled sends (ISO, as Resend reports it); canceledAt when canceled before sending
   scheduledAt: text("scheduled_at"),
+  canceledAt: text("canceled_at"),
   createdAt: createdAt(),
 });
 

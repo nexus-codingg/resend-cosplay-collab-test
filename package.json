@@ -12,7 +12,8 @@
     "db:studio": "drizzle-kit studio",
     "test:receiving": "node --env-file=.env.local scripts/test-receiving.mjs",
     "db:seed": "node scripts/seed.mjs",
-    "simulate:reply": "node --env-file=.env.local scripts/simulate-reply.mjs"
+    "simulate:reply": "node --env-file=.env.local scripts/simulate-reply.mjs",
+    "test:phase5": "node --env-file=.env.local scripts/test-phase5.mjs"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",

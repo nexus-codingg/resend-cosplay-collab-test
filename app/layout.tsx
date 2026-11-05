@@ -42,6 +42,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
               <Link href="/" className="hover:text-foreground">
                 Cosplayers
               </Link>
+              <Link href="/invite" className="hover:text-foreground">
+                Group invite
+              </Link>
               <Link href="/collabs" className="hover:text-foreground">
                 Collabs
               </Link>

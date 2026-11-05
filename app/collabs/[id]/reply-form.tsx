@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { replyToCollab, type ReplyState } from "../../actions";
 import { inputClass } from "../../components/field-styles";
 import { ImageInput } from "../../components/image-input";
+import { SendAtField } from "../../components/send-at-field";
 
 export function ReplyForm({
   collabId,
@@ -91,6 +92,8 @@ export function ReplyForm({
       </fieldset>
 
       <ImageInput label="Images" />
+
+      <SendAtField />
 
       {state.error && (
         <p role="alert" className="rounded-lg bg-red-500/10 px-3 py-2 text-sm text-red-600">

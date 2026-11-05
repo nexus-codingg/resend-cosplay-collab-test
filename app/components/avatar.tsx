@@ -8,14 +8,18 @@ const gradients = [
   "from-teal to-clay",
 ];
 
-export function Avatar({ id, name, size = "md" }: { id: number; name: string; size?: "md" | "lg" }) {
+export function Avatar({ id, name, size = "md" }: { id: number; name: string; size?: "sm" | "md" | "lg" }) {
   const initials = name
     .split(/\s+/)
     .map((part) => part[0])
     .join("")
     .slice(0, 2)
     .toUpperCase();
-  const sizing = size === "lg" ? "h-24 w-24 text-3xl" : "h-14 w-14 text-lg";
+  const sizing = {
+    sm: "h-10 w-10 text-sm",
+    md: "h-14 w-14 text-lg",
+    lg: "h-24 w-24 text-3xl",
+  }[size];
 
   return (
     <div

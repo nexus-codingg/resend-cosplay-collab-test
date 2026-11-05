@@ -93,4 +93,44 @@ Results:
 
 ### Phase 5: Send / schedule / batch / idempotency
 
+What was built:
+- **Send later** on the reply form (`scheduledAt`). A scheduled email shows its live status from `emails.get()`, with **Reschedule** (`emails.update`) and **Cancel send** (`emails.cancel`).
+- **Group invite** (`/invite`): one `batch.send()` call with an email per cosplayer, each with its own reply-to, an idempotency key for the whole batch, and optional scheduling.
+- `npm run test:phase5`: 17 edge-case checks against the real API.
+
+Results (`test:phase5`, all 17 pass, plus manual tests in the app):
+
+| Case | Result |
+|---|---|
+| Same key + same payload | 🟢 same email id back, nothing sent twice |
+| Same key + different payload | 🟢 `409 invalid_idempotent_request` |
+| Two requests at once, same key | 🟢 one email; both calls got the same id (no `409 concurrent_idempotent_requests`) |
+| Key of 257 characters | 🟢 `400 invalid_idempotency_key` |
+| Batch: same key twice | 🟢 same ids, same order |
+| Batch: same key, different batch | 🟢 `409 invalid_idempotent_request` |
+| Batch strict (default), one bad address | 🟢 whole batch fails with `422 validation_error` |
+| Batch `batchValidation: "permissive"` | 🟢 good emails send; `errors: [{ index: 1, message }]` |
+| Batch with an attachment | 🔴 **accepted, attachment silently dropped** |
+| `scheduledAt: "in 1 hour"` | 🟢 scheduled (after a moment as `queued`) |
+| `emails.update` / `emails.cancel` | 🟢 time moves; `last_event` becomes `canceled` |
+| Update a canceled email | 🟢 `422 validation_error: You can not edit an email that is not scheduled` |
+| `"tomorrow at 9am"` | 🟡 resolves to **09:00 UTC** (4am in New York) |
+| More than 30 days ahead | 🟢 `422 validation_error: The scheduled_at field must be within 30 days` |
+| Scheduled email with an attachment | 🟢 works; the received copy had the image |
+| Batch with per-email `scheduledAt` | 🟢 each one scheduled |
+| In the app: scheduled batch invite, cancel one, reschedule one | 🟢 Kai's sent on time, Mika's at the new time, Rex's never arrived |
+
+Friction:
+- 🔴 **Batch sends drop attachments silently.** The docs say attachments aren't supported in batch, and the SDK type removes the field, but the API returns 200 with an id and the email arrives with no attachment. Anyone calling the REST API directly, or passing untyped objects, loses files with no error. A `422` would be much safer.
+- 🟡 **Natural-language times are UTC.** `"tomorrow at 9am"` means 9am UTC. The docs show `"Friday at 3pm ET"`, which hints that you can name a timezone, but they never say the default is UTC. The app converts clock times to ISO in the browser instead.
+- 🟡 **A just-scheduled email briefly reads as `queued` with `scheduled_at: null`.** Calling `emails.get()` right after `send()` can return `last_event: "queued"` and no `scheduled_at` for about a second. My first version saved a null time because of this. Neither the docs nor the `last_event` type explain when `queued` vs `scheduled` appears. Returning `scheduled_at` from `send()` would avoid the extra call.
+- 🟡 **The SDK comment on `scheduledAt` says ISO 8601 only**, but the API (and docs) accept natural language. Editor tooltips steer you away from a useful feature.
+- 🟡 **`batchValidation: "permissive"` is in the SDK but not on the batch docs page.** It's the most useful batch option (send the good ones, report the bad ones by index) and I only found it in the type definitions.
+- 🟡 **The batch docs page doesn't name the scheduling field** (`scheduledAt` in Node / `scheduled_at` in the API), even though the scheduling page says batch emails can be scheduled.
+- 🟡 **`scheduled_at` isn't ISO 8601.** It comes back as `2026-11-05 03:57:45.949000+00` (space separator, microseconds, `+00`). Node's `new Date()` parses it, but stricter parsers (and Safari) may not.
+- 🟡 **The rate limit (10 requests/second) caught my test script.** That's reasonable, but a `429` reads like any other error, so a check expecting "rejected" first passed for the wrong reason. Worth calling out in the idempotency/batch docs, since retry loops are exactly where you'd hit it.
+- 🟡 **Scheduled emails go out 60–90 seconds after their time.** That's fine for reminders, but the docs don't say how precise scheduling is.
+- ℹ️ **Batch + idempotency + generated ids is a trap.** If each batch email gets a fresh random value (like a reply token) on every attempt, a retry is a "different payload" and gets a 409. The app derives tokens from the request id so retries are identical. Worth a line in the idempotency docs: keep everything in the payload deterministic for a given key.
+- ℹ️ The concurrent case never produced `409 concurrent_idempotent_requests`; both simultaneous requests got the same id. That's safe, but I couldn't trigger the documented error.
+
 ## Summary

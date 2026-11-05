@@ -105,7 +105,9 @@ In production you'd skip the tunnel and use your deployed URL, e.g. `https://you
 3. Click **Send collab request**. The email goes out through Resend with the images attached, and you land on the collab's thread page.
 4. When the cosplayer replies, the reply shows up on the thread with its images, and the collab moves from **Pending** to **Discussing**.
 5. Answer from the **Reply to …** form at the bottom of the thread: a message, optional collab details (date, location), images, and a **Mark this collab as confirmed** checkbox. The email is sent as a real reply (`In-Reply-To` / `References` headers), so it stays in the same conversation in the cosplayer's inbox, and their next reply comes back to the same thread.
-6. **Collabs** in the header lists every collab you've started.
+6. **Send later:** the reply form's **When** menu schedules the email (in 2 minutes, in 1 hour, tomorrow at 9am, or a date you pick, up to 30 days ahead). A scheduled email shows its live Resend status on the thread, with **Reschedule** and **Cancel send** buttons until it goes out. Scheduled emails can include images.
+7. **Group invite** in the header sends the same invite to several cosplayers in one Resend batch request. Each person gets their own email and their own collab thread. It can be scheduled too. Batch emails can't carry attachments, so invites are text only.
+8. **Collabs** in the header lists every collab you've started.
 
 ## Start the app
 
@@ -128,6 +130,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `npm run db:studio` | Browse the database in Drizzle Studio |
 | `npm run simulate:reply` | Send a cosplayer reply with an image to the latest collab (add `-- --deliver-locally` to skip the tunnel). Subjects start with `Phase 3 test:`; change the label with `-- --label "Phase 4 test"` |
 | `npm run test:receiving` | Send a test email to your receiving domain and confirm it arrives via the Receiving API |
+| `npm run test:phase5` | Check scheduling, batch sending and idempotency edge cases against the real API (17 checks, about 1 minute). Sends test emails to `test@` on your receiving domain and cancels anything it scheduled |
 
 `test:receiving` sends to `test@collab.nexuscosplays.com` by default. Set `TEST_INBOUND_TO` to use another address on your receiving domain.
 
@@ -145,17 +148,22 @@ app/
 │   ├── avatar.tsx
 │   ├── field-styles.ts
 │   ├── image-input.tsx
+│   ├── send-at-field.tsx
 │   ├── theme-toggle.tsx
 │   └── inline-script.tsx
 ├── cosplayers/[id]/
 │   ├── page.tsx
 │   └── propose-form.tsx
+├── invite/
+│   ├── page.tsx
+│   └── invite-form.tsx
 └── collabs/
     ├── page.tsx
     ├── status-badge.tsx
     └── [id]/
         ├── page.tsx
-        └── reply-form.tsx
+        ├── reply-form.tsx
+        └── scheduled-controls.tsx
 lib/
 ├── resend.ts
 ├── data.ts
@@ -170,7 +178,8 @@ drizzle/
 scripts/
 ├── seed.mjs
 ├── simulate-reply.mjs
-└── test-receiving.mjs
+├── test-receiving.mjs
+└── test-phase5.mjs
 docs/
 └── FRICTION_LOG.md
 ```
@@ -182,15 +191,20 @@ docs/
 - [app/cosplayers/[id]/page.tsx](app/cosplayers/[id]/page.tsx): a cosplayer's profile (`/cosplayers/1`) with the propose-a-collab form. Creates the one-time id used as the reply token and idempotency key
 - [app/cosplayers/[id]/propose-form.tsx](app/cosplayers/[id]/propose-form.tsx): the form itself (name, subject, message, images), with image previews, errors and a sending state
 - [app/collabs/page.tsx](app/collabs/page.tsx): list of every collab you've started (`/collabs`)
-- [app/collabs/[id]/page.tsx](app/collabs/[id]/page.tsx): one collab's thread (`/collabs/1`): messages, attached images, Resend email ids, and the reply form. Creates a new one-time id per visit, used as the reply's idempotency key
-- [app/collabs/[id]/reply-form.tsx](app/collabs/[id]/reply-form.tsx): the reply form: name, subject, message, collab details (date, location, confirm checkbox) and images
+- [app/collabs/[id]/page.tsx](app/collabs/[id]/page.tsx): one collab's thread (`/collabs/1`): messages, attached images, Resend email ids, the live Resend status of scheduled emails (`emails.get()`), and the reply form. Creates a new one-time id per visit, used as the reply's idempotency key
+- [app/collabs/[id]/reply-form.tsx](app/collabs/[id]/reply-form.tsx): the reply form: name, subject, message, collab details (date, location, confirm checkbox), images and when to send
+- [app/collabs/[id]/scheduled-controls.tsx](app/collabs/[id]/scheduled-controls.tsx): the **Reschedule** and **Cancel send** buttons shown under an email that hasn't gone out yet
+- [app/invite/page.tsx](app/invite/page.tsx): group invite page (`/invite`). Creates the one-time id used as the batch's idempotency key
+- [app/invite/invite-form.tsx](app/invite/invite-form.tsx): the group invite form: pick cosplayers, name, subject, message and when to send
 - [app/globals.css](app/globals.css): the color palette and the light and dark colors
 
 ### Server logic
 
 - [app/actions.ts](app/actions.ts): the Server Actions behind the two forms:
   - `proposeCollab`: checks the form, saves images, sends the first email through Resend (attachments, `collab+<token>` reply-to, tag, idempotency key) and saves the collab
-  - `replyToCollab`: sends a threaded reply. Collects every Message-ID in the thread (looking up sent ones with `emails.get()` the first time), sets `In-Reply-To` to the latest and `References` to all of them, attaches images, and updates the status. If a retry gets the same email id back from the idempotency key, it isn't saved twice
+  - `replyToCollab`: sends a threaded reply. Collects every Message-ID in the thread (looking up sent ones with `emails.get()` the first time), sets `In-Reply-To` to the latest and `References` to all of them, attaches images, schedules it if a time was picked (`scheduledAt`), and updates the status. If a retry gets the same email id back from the idempotency key, it isn't saved twice
+  - `rescheduleMessage` / `cancelScheduledMessage`: move or stop a scheduled email with `emails.update()` and `emails.cancel()`
+  - `inviteGroup`: sends one invite per picked cosplayer with `batch.send()` and an idempotency key for the whole batch, then creates a collab for each. Reply tokens are derived from the request id, so a retry sends exactly the same batch (a changed batch with the same key would be rejected)
 - [app/api/webhooks/resend/route.ts](app/api/webhooks/resend/route.ts): the webhook endpoint Resend calls. Checks the signature using the raw request body, ignores events other than `email.received`, and returns a 500 on failure so Resend retries
 - [lib/inbound.ts](lib/inbound.ts): handles a received email. Finds the collab from the `collab+<token>` address, skips repeat deliveries, fetches the body (the webhook only carries metadata), downloads the attachments right away (their links expire after 1 hour), strips the quoted original from the reply, saves it, and moves the collab to Discussing
 - [lib/resend.ts](lib/resend.ts): the shared Resend client plus the sender address and receiving domain settings (server-only, so the API key never reaches the browser)
@@ -203,6 +217,7 @@ docs/
 - [app/components/avatar.tsx](app/components/avatar.tsx): round avatar with initials and a palette gradient
 - [app/components/image-input.tsx](app/components/image-input.tsx): image picker with thumbnail previews, used by both forms
 - [app/components/field-styles.ts](app/components/field-styles.ts): the shared input style for the forms
+- [app/components/send-at-field.tsx](app/components/send-at-field.tsx): the **When** menu for scheduling. Relative times ("in 2 min") go to Resend as-is; clock times are turned into an exact time in your timezone first, because Resend reads phrases like "tomorrow at 9am" as UTC
 - [app/components/theme-toggle.tsx](app/components/theme-toggle.tsx): the sun/moon button
 - [app/components/inline-script.tsx](app/components/inline-script.tsx): helper that renders the theme script without a React warning
 - [app/collabs/status-badge.tsx](app/collabs/status-badge.tsx): the Pending / Discussing / Confirmed badge
@@ -220,6 +235,7 @@ docs/
 - [scripts/seed.mjs](scripts/seed.mjs): adds the sample cosplayers (`npm run db:seed`)
 - [scripts/simulate-reply.mjs](scripts/simulate-reply.mjs): sends a cosplayer reply with an image to the latest collab. With `--deliver-locally` it also signs and POSTs the webhook itself (`npm run simulate:reply`)
 - [scripts/test-receiving.mjs](scripts/test-receiving.mjs): sends a test email to the receiving domain and waits for it to arrive (`npm run test:receiving`)
+- [scripts/test-phase5.mjs](scripts/test-phase5.mjs): checks scheduling, batch and idempotency behavior against the real API and prints PASS/FAIL per case (`npm run test:phase5`). Spaces out its calls to stay under the 10 requests/second rate limit
 - [docs/FRICTION_LOG.md](docs/FRICTION_LOG.md): notes on what was smooth or confusing in Resend while building this
 
 ### Config
